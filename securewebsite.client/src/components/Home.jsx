@@ -20,7 +20,7 @@ function Home() {
     }, []);
 
     return (
-        <section>
+        <section className="page">
             <header>
                 <h1>Welcome to your page</h1>
                 {

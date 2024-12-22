@@ -17,8 +17,6 @@ namespace SecureWebSite.Server.Controllers
         [HttpPost("register")]
         public async Task<ActionResult> RegisterUser(User user)
         {
-            string message = "";
-
             IdentityResult result = new();
 
             try
@@ -30,60 +28,68 @@ namespace SecureWebSite.Server.Controllers
                     UserName = user.UserName
                 };
 
-                result = await userManager.CreateAsync(user_);
+                result = await userManager.CreateAsync(user_, user.PasswordHash);
 
                 if (!result.Succeeded)
                 {
                     return BadRequest(result);
                 }
-
-                message = "Registed Successfully";
             }
             catch (Exception ex)
             {
                 return BadRequest("Something went wrong, please try again " + ex.Message);
             }
 
-            return Ok(new { message = message, result = result });
+            return Ok(new { message = "Registered Successfully", result = result });
         }
 
         [HttpPost("login")]
         public async Task<ActionResult> LoginUser(Login login)
         {
-            string message = "";
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
             try
             {
                 User user_ = await userManager.FindByEmailAsync(login.Email);
+                if (user_ == null)
+                {
+                    return BadRequest(new { message = "Please check your credentials and try again" });
+                }
 
-                if (user_ is not null && !user_.EmailConfirmed)
+                if (!await userManager.CheckPasswordAsync(user_, login.Password))
+                {
+                    return Unauthorized(new { message = "Invalid password" });
+                }
+
+                if (!user_.EmailConfirmed)
                 {
                     user_.EmailConfirmed = true;
                 }
-                var result = await signInManager.PasswordSignInAsync(user_, login.Password, login.Remember, false   );
+
+                var result = await signInManager.PasswordSignInAsync(user_.UserName, login.Password, login.Remember, false);
 
                 if (!result.Succeeded)
                 {
-                    return Unauthorized("Check your login credentials and try again");
+                    return Unauthorized(new { message = "Check your login credentials and try again" });
                 }
 
                 user_.LastLogin = DateTime.Now;
                 var updateResult = await userManager.UpdateAsync(user_);
 
-                message = "Login Successfully";
+                return Ok(new { message = "Login successful" });
             }
             catch (Exception ex)
             {
                 return BadRequest("Something went wrong, please try again " + ex.Message);
             }
-
-            return Ok(new { message = message});
         }
 
         [HttpGet("logout"), Authorize]
         public async Task<ActionResult> LogoutUser()
         {
-            string message = "You free to go!";
             try
             {
                 await signInManager.SignOutAsync();
@@ -92,7 +98,7 @@ namespace SecureWebSite.Server.Controllers
             {
                 return BadRequest("Something went wrong, please try again " + ex.Message);
             }
-            return Ok(new { message = message });
+            return Ok(new { message = "You are free to go!" });
         }
 
         [HttpGet("admin"), Authorize]
@@ -115,7 +121,7 @@ namespace SecureWebSite.Server.Controllers
             return Ok(new {userInfo = userInfo});
         }
 
-        [HttpGet("xhtlekd"), Authorize]
+        [HttpGet("xhtlekd")]
         public async Task<ActionResult> CheckUser(string email)
         {
             string message = "";
@@ -136,7 +142,7 @@ namespace SecureWebSite.Server.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest("Something went wrong, please try again! " + ex.Message);
+                return BadRequest(new {message= "Something went wrong, please try again! " + ex.Message });
             }
 
             return Ok(new { message = message, user = currentUser });

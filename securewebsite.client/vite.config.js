@@ -44,11 +44,11 @@ export default defineConfig({
     server: {
         proxy: {
             '^/weatherforecast': {
-                target,
+                target: "https://localhost:7035",
                 secure: false
             },
             '^/api/SecureWebsite': {
-                target,
+                target: "https://localhost:7035",
                 secure: false
             }
         },
